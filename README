@@ -1,0 +1,72 @@
+A message board for cloud communication.
+
+
+Types & Tables
+==============
+
+A Message is a notification from some board member posted to a channel on the
+board. Messages may be in reply to other messages; the Thread type describes
+this relationship.
+
+The Message type as a SQL table:
+
+         uuid |        timestamp         |   who   |   on    | body
+        ------+--------------------------+---------+---------+-------
+         uuid | timestamp with time zone | address | address | bytea
+
+The Thread type as a SQL table:
+
+                         before | disposition | after
+                        --------+-------------+-------
+                          uuid  |    flag     | uuid
+
+An Address is a simply an LDH domain name which may have an @ and a short
+"local component" in front of it. The Disposition flag is one of:
+
+      Ignored        Acknowledged        Problem        Info        End
+
+and is a way to indicate how a reply relates to the history of a process
+spawned as a result of receiving the message.
+
+When a client connects, they register subscriptions and an address as a
+pre-requisite to sending messages, forming an Online record.
+
+                   who   |        timestamp         |   on
+                ---------+--------------------------+---------
+                 address | timestamp with time zone | address
+
+Trying to register with an address already in use results in a new address
+being created. A user may be on multiple chans; this results in multiple
+records.
+
+
+Operations
+==========
+
+The operations below constitute the entire client interface to the board,
+which is to say, the entire interface for posting messages, retrieving them,
+examining threads and subscribing to topics. The *administrative* interface is
+something else entirely; none is specified here and in the first version none
+will be provided (there'll still be SQL...).
+
+We use `:' to indicate "has type", a simple arrow (`LHS -> RHS') to indicate
+that an operation takes LHS to RHS and a "twiddle arrow" (`LHS ~> RHS') to
+indicate that an operations "forms" an RHS from a LHS, altering or reading the
+state of the board.
+
+  online : (Address, [Address]) ~> Online
+  -- A client comes online and follows some chans.
+
+  follow : [Address] ~> Online
+  -- More chans can be followed at any time.
+
+  post : (Address, Bytes) ~> Message
+  -- Posts a message to the board.
+
+  reply : (UUID, Disposition, Bytes, Address) ~> Message
+  -- A post in reply to a particular message.
+
+  thread : (UUID, Natural) ~> Tree Message
+  -- Traverse the thread starting at the given message, retrieving at most the
+  -- given number of messages.
+
