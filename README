@@ -66,7 +66,10 @@ state of the board.
   reply : (UUID, Disposition, Bytes, Address) ~> Message
   -- A post in reply to a particular message.
 
-  thread : (UUID, Natural) ~> Tree Message
-  -- Traverse the thread starting at the given message, retrieving at most the
-  -- given number of messages.
+  replies : (UUID, Natural) ~> [[UUID]]
+  -- Retrieve the replies in the thread rooted at the message indicated by the
+  -- first parameter, starting from the leaves. The second parameter indicates
+  -- how long each reply chain should be: a value of one returns only the
+  -- leaves; a value of two returns the second to last message and the leaf
+  -- message.
 
