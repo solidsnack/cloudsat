@@ -57,7 +57,7 @@ state of the board.
   online : (Address, [Address]) ~> Online
   -- A client comes online and follows some chans.
 
-  follow : [Address] ~> Online
+  join : [Address] ~> Online
   -- More chans can be followed at any time.
 
   post : (Address, Bytes) ~> Message
