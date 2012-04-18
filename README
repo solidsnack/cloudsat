@@ -8,13 +8,13 @@ A Message is a notification from some board member posted to a channel on the
 board. Messages may be in reply to other messages; the Thread type describes
 this relationship.
 
-The Message type as a SQL table:
+The Message type as a Postgres table:
 
          uuid |        timestamp         |   who   |   on    | body
         ------+--------------------------+---------+---------+-------
          uuid | timestamp with time zone | address | address | bytea
 
-The Thread type as a SQL table:
+The Thread type as a Postgres table:
 
                          before | disposition | after
                         --------+-------------+-------
@@ -23,36 +23,67 @@ The Thread type as a SQL table:
 An Address is a simply an LDH domain name which may have an @ and a short
 "local component" in front of it. The Disposition flag is one of:
 
-      Ignored        Acknowledged        Problem        Info        End
+    Ignored   Acknowledged   Belay   Problem   Info   End   Lock   Unlock
 
 and is a way to indicate how a reply relates to the history of a process
 spawned as a result of receiving the message.
 
 When a client connects, they register subscriptions and an address as a
-pre-requisite to sending messages, forming an Online record.
+pre-requisite to sending messages. Their subscriptions form Online records:
 
-                   who   |        timestamp         |   on
-                ---------+--------------------------+---------
-                 address | timestamp with time zone | address
+            leaving |   who   |        timestamp         |   on
+           ---------+---------+--------------------------+---------
+              bool  | address | timestamp with time zone | address
 
-Trying to register with an address already in use results in a new address
-being created. A user may be on multiple chans; this results in multiple
-records.
+Usually leaving is false; but when a client leaves a chan then leaving is
+true. A view table can be formed, listing all of a client's non-cancelled
+subscriptions. The connection between Online records and the list of existing,
+real database connections is something to be developed.
 
 
 Operations
 ==========
 
-The operations below constitute the entire client interface to the board,
-which is to say, the entire interface for posting messages, retrieving them,
-examining threads and subscribing to topics. The *administrative* interface is
-something else entirely; none is specified here and in the first version none
-will be provided (there'll still be SQL...).
+We can imagine four kinds of "users" for the cloud message board:
 
-We use `:' to indicate "has type", a simple arrow (`LHS -> RHS') to indicate
-that an operation takes LHS to RHS and a "twiddle arrow" (`LHS ~> RHS') to
-indicate that an operations "forms" an RHS from a LHS, altering or reading the
-state of the board.
+  * Server bots receive messages, post replies and perform tasks.
+
+  * Task bots post tasks, monitor replies and keep track of task status.
+
+  * Admin bots observe overall error rates and throughput, monitor space usage
+    and truncate tables.
+
+  * Ad hoc bots connect to peform various analytics, not relevant to the
+    operation of the board on a moment to moment basis but of interest to
+    those maintaining the cloud.
+
+From the roles above, we can expect that:
+
+  * SELECTs of a very general nature need to be performed from time to time.
+
+  * Deleting older messages, threads and subscriptions is necessary; but is
+    also completely formulaic. A couple stored procedures and a foreign key
+    constraint linking messages to threads is probably enough; we don't expect
+    general DELETEs to be performed at all and thus no bot needs permission to
+    do them.
+
+  * Some very specific SELECTs need to be performed over and over again. For
+    example, checking if there is, in a thread, new messages that indicate
+    completion or failure, new messages that indicate locks being taken and so
+    forth. These will eventually become stored procedures.
+
+Data additions are very limited. There are no UPDATEs at all -- message/task
+cancellation is accomplished with a reply having Belay in the disposition
+column, for example; and subscription cancellations involve adding an
+additional row to the subscriptions table. The two input operations are,
+fundamentally:
+
+  * Posting a reply or a new message.
+
+  * Updating one's subscriptions.
+
+It is desirable to wrap all these operations with stored procedures, given
+below:
 
   online : (Address, [Address]) ~> Online
   -- A client comes online and follows some chans.
@@ -65,11 +96,4 @@ state of the board.
 
   reply : (UUID, Disposition, Bytes, Address) ~> Message
   -- A post in reply to a particular message.
-
-  replies : (UUID, Natural) ~> [[UUID]]
-  -- Retrieve the replies in the thread rooted at the message indicated by the
-  -- first parameter, starting from the leaves. The second parameter indicates
-  -- how long each reply chain should be: a value of one returns only the
-  -- leaves; a value of two returns the second to last message and the leaf
-  -- message.
 
