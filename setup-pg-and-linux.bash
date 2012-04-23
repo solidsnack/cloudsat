@@ -14,35 +14,34 @@ function kernel_params {
 
 function pg_configuration {
   ( cd /etc/postgresql/9.1/main/
-    # listen_addresses = '*'
-    sed -i -r 's/^(max_connections) += +([0-9]+)([^0-9].*$)?/\1 = 2048\3/' \
-        postgresql.conf
-    sed -i -r 's|^(host +all +all +) 127.0.0.1/32 ( +md5.*)$|\1 0.0.0.0/0 \2|' \
-        pg_hba.conf
+    sed -i -r "s/^#(listen_addresses) += +'localhost'(.*)$/\1 = '*'\2/
+               s/^(max_connections) += +([0-9]+)([^0-9].*$)?/\1 = 2048\3/
+              " postgresql.conf
+    sed -i -r 's|^(host +all +all +) 127.0.0.1/32 ( +md5.*)$|\1 0.0.0.0/0 \2|
+              ' pg_hba.conf
   )
   /etc/init.d/postgresql restart
 }
 
 function pg_db {
 sudo -u postgres psql <<\SQL
-CREATE TABLESPACE ram LOCATION '/var/lib/postgresql/9.1/ram';
 CREATE ROLE cloudsat PASSWORD 'none' NOSUPERUSER NOCREATEDB NOCREATEROLE LOGIN;
-CREATE DATABASE cloudsat OWNER cloudsat ENCODING 'UTF8' TABLESPACE ram;
+CREATE DATABASE cloudsat OWNER cloudsat ENCODING 'UTF8';
 SQL
 }
 
-function ramfs {
-  local d=/var/lib/postgresql/9.1/ram
-  mkdir "$d"
-  chmod 0700 "$d"
-  chown postgres:postgres "$d"
-  mount -t ramfs ramfs "$d"
+function ram_for_pg {
+  local d=/var/lib/postgresql
+  mkdir -p "$d"
+  mount -t tmpfs -o size=8g tmpfs "$d"
+  # chmod 0700 "$d"
+  # chown postgres:postgres "$d"
 }
 
 function all {
+  ram_for_pg
   packages
   kernel_params
-  ramfs
   pg_configuration
   pg_db
 }
