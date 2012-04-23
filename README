@@ -82,18 +82,24 @@ fundamentally:
 
   * Updating one's subscriptions.
 
-It is desirable to wrap all these operations with stored procedures, given
-below:
+For a server bots, maybe we only allow replies; so after establishing a
+connection and registering a subscript, server bots need only two operations:
 
-  online : (Address, [Address]) ~> Online
-  -- A client comes online and follows some chans.
+  * reply, to form a mesasge;
 
-  join : [Address] ~> Online
-  -- More chans can be followed at any time.
+  * inbox, to get a VIEW of relevant messages to SELECT from.
 
-  post : (Address, Bytes) ~> Message
-  -- Posts a message to the board.
+Appropriate SQL function signatures are:
 
-  reply : (UUID, Disposition, Bytes, Address) ~> Message
-  -- A post in reply to a particular message.
+  -- Reply returns the UUID assigned to your message.
+  reply(from address, on address, message_being_replied_to uuid, body bytes)
+  RETURNS uuid
+
+  -- Gets messages based on the subscriptions.
+  inbox(subscriptions [address]) RETURNS SET OF message
+
+For task bots its useful to have a `post' function to kick off a thread and a
+one or many stored procedures for walking the thread to find things like all
+acknowledgments, all failed tasks, all incomplete tasks.
+
 
