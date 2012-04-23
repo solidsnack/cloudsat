@@ -12,13 +12,6 @@ function kernel_params {
   echo $'250\t32000\t32\t512' >/proc/sys/kernel/sem     # Up SEMMNI to 512
 }
 
-function pg_db {
-sudo -u postgres psql <<\SQL
-CREATE ROLE cloudsat PASSWORD 'none' NOSUPERUSER NOCREATEDB NOCREATEROLE LOGIN;
-CREATE DATABASE cloudsat OWNER cloudsat ENCODING 'UTF8';
-SQL
-}
-
 function pg_configuration {
   ( cd /etc/postgresql/9.1/main/
     # listen_addresses = '*'
@@ -30,9 +23,26 @@ function pg_configuration {
   /etc/init.d/postgresql restart
 }
 
+function pg_db {
+sudo -u postgres psql <<\SQL
+CREATE TABLESPACE ram LOCATION '/var/lib/postgresql/9.1/ram';
+CREATE ROLE cloudsat PASSWORD 'none' NOSUPERUSER NOCREATEDB NOCREATEROLE LOGIN;
+CREATE DATABASE cloudsat OWNER cloudsat ENCODING 'UTF8' TABLESPACE ram;
+SQL
+}
+
+function ramfs {
+  local d=/var/lib/postgresql/9.1/ram
+  mkdir "$d"
+  chmod 0700 "$d"
+  chown postgres:postgres "$d"
+  mount -t ramfs ramfs "$d"
+}
+
 function all {
   packages
   kernel_params
+  ramfs
   pg_configuration
   pg_db
 }
