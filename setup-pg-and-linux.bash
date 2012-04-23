@@ -1,7 +1,8 @@
 #!/bin/bash
 set -o errexit -o nounset -o pipefail
 
-packages=( postgresql-client-9.1 postgresql-9.1 postgresql-9.1-pllua )
+packages=( postgresql-client-9.1 postgresql-9.1 postgresql-9.1-pllua
+           postgresql-contrib-9.1 )
 function packages {
   aptitude install -y "${packages[@]}"
 }
@@ -20,6 +21,7 @@ SQL
 
 function pg_configuration {
   ( cd /etc/postgresql/9.1/main/
+    # listen_addresses = '*'
     sed -i -r 's/^(max_connections) += +([0-9]+)([^0-9].*$)?/\1 = 2048\3/' \
         postgresql.conf
     sed -i -r 's|^(host +all +all +) 127.0.0.1/32 ( +md5.*)$|\1 0.0.0.0/0 \2|' \
