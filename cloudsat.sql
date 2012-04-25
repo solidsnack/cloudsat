@@ -8,8 +8,8 @@ SET search_path TO cloudsat,public;
 CREATE TABLE messages
 ( uuid      uuid PRIMARY KEY,
   timestamp timestamp with time zone NOT NULL,
-  chan      text NOT NULL,
   poster    text NOT NULL,
+  chan      text NOT NULL,
   message   text NOT NULL );
 CREATE INDEX ON messages (timestamp);
 CREATE INDEX ON messages USING gist(to_tsvector('simple', chan));
