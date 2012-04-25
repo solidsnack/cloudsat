@@ -12,8 +12,8 @@ CREATE TABLE messages
   chan      text NOT NULL,
   message   text NOT NULL );
 CREATE INDEX ON messages (timestamp);
-CREATE INDEX ON messages USING gist(to_tsvector('simple', chan));
-CREATE INDEX ON messages USING gist(to_tsvector('simple', poster));
+CREATE INDEX ON messages USING hash(poster);
+CREATE INDEX ON messages USING hash(chan);
 CREATE INDEX ON messages USING gist(to_tsvector('english', message));
 
 CREATE TYPE disposition AS ENUM
@@ -66,4 +66,43 @@ END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION posts(chans text[]) IS
  'Searches for posts in the given channels.';
+
+CREATE FUNCTION norm(address text)
+RETURNS text AS $$
+BEGIN
+  RETURN lower(trim(trailing '.' from address)) || '.';
+END;
+$$ LANGUAGE plpgsql STRICT;
+COMMENT ON FUNCTION norm(address text) IS
+ 'Normalize an address so it has the final dot.';
+
+CREATE FUNCTION suffixes(address text)
+RETURNS text[] AS $$
+DECLARE
+  str text := norm(address);
+  pos int;
+  res text[];
+  dot text := '.';
+  at  text := '@';
+BEGIN
+  res := res || str;
+  pos := position(at in str);      -- Clip leading local@ part.
+  IF pos > 0
+  THEN
+    str := substring(str from pos+1);
+    res := res || str;
+  END IF;
+  LOOP
+    pos := position(dot in str);
+    str := substring(str from pos+1);
+    EXIT WHEN '' = str;
+    res := res || str;
+  END LOOP;
+  res := res || dot;
+  RETURN res;
+END;
+$$ LANGUAGE plpgsql STRICT;
+COMMENT ON FUNCTION suffixes(address text) IS
+ 'Break an address like admin@example.com into rooted pieces like this:
+  {com., example.com., admin@example.com.}';
 
