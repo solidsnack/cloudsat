@@ -40,8 +40,8 @@ BEGIN
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT;
-COMMENT ON FUNCTION post(poster text, chan text, message text)
-     IS 'Creates a new thread on the message board with an initial message.';
+COMMENT ON FUNCTION post(poster text, chan text, message text) IS
+ 'Creates a new thread on the message board with an initial message.';
 
 CREATE FUNCTION reply
 ( poster text, chan text, message text, parent uuid, disposition disposition )
@@ -55,8 +55,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION reply
-( poster text, chan text, message text, parent uuid, disposition disposition )
-     IS 'Posts a reply in an existing thread, under the given message.';
+(poster text, chan text, message text, parent uuid, disposition disposition) IS
+ 'Posts a reply in an existing thread, under the given message.';
 
 CREATE FUNCTION posts(chans text[])
 RETURNS SETOF messages AS $$
@@ -64,6 +64,6 @@ BEGIN
   RETURN QUERY SELECT * FROM messages WHERE chan = ANY (chans);
 END;
 $$ LANGUAGE plpgsql STRICT;
-COMMENT ON FUNCTION posts(chans text[])
-     IS 'Searches for posts in the given channels.';
+COMMENT ON FUNCTION posts(chans text[]) IS
+ 'Searches for posts in the given channels.';
 
