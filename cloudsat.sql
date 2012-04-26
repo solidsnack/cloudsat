@@ -162,5 +162,5 @@ SELECT ARRAY( SELECT DISTINCT $1[s.i] FROM
               generate_series(array_lower($1,1), array_upper($1,1)) AS s(i) );
 $$ LANGUAGE sql IMMUTABLE;
 COMMENT ON FUNCTION uniq(ANYARRAY) IS
- 'The equivalent of sort | uniq, it ensures an array contains no duplicates.';
+ 'Ensures an array contains no duplicates.';
 
