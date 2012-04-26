@@ -150,19 +150,17 @@ BEGIN
   FOREACH address IN ARRAY addresses LOOP
     acc := acc || suffixes(address);
   END LOOP;
-  RETURN sort_uniq(acc);
+  RETURN uniq(acc);
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION suffixes(addresses text[]) IS
  'Returns the unions of all suffixes of all the addresses.';
 
-CREATE FUNCTION sort_uniq(ANYARRAY)
+CREATE FUNCTION uniq(ANYARRAY)
 RETURNS ANYARRAY AS $$
-SELECT ARRAY( SELECT DISTINCT $1[s.i] AS "foo"
-              FROM
-                generate_series(array_lower($1,1), array_upper($1,1)) AS s(i)
-              ORDER BY foo );
+SELECT ARRAY( SELECT DISTINCT $1[s.i] FROM
+              generate_series(array_lower($1,1), array_upper($1,1)) AS s(i) );
 $$ LANGUAGE sql IMMUTABLE;
-COMMENT ON FUNCTION sort_uniq(ANYARRAY) IS
+COMMENT ON FUNCTION uniq(ANYARRAY) IS
  'The equivalent of sort | uniq, it ensures an array contains no duplicates.';
 
