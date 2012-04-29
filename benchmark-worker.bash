@@ -15,11 +15,15 @@ function nway_insert_posts {
   init
   local clients=$(( 10#$1 ))
   local posts=$(( 10#$2 ))
-  msg "Striping $clients connections over 10 seconds and starting inserts..."
+  local s=200
+  msg "Striping $clients connections over ${s}s before starting inserts..."
   for n in $(seq 1 $clients)
   do
-    ( sleep $(( $RANDOM % 10 )).$(( $RANDOM % 100 ))
-      insert_posts $posts | psql_ --quiet 1>/dev/null ) &
+    ( before=$(bc <<<"scale=2; $s * $RANDOM / 65535")
+      after=$(bc <<<"scale=2; $s - $before")
+      sleep $before
+      { echo "SELECT pg_sleep($after);" ; insert_posts $posts ;} |
+      psql_ --quiet 1>/dev/null ) &
   done
   msg 'Waiting for clients...'
   wait
