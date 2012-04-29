@@ -49,7 +49,7 @@ DECLARE
   id    uuid := uuid_generate_v1();
   chan_ text := norm(chan);
 BEGIN
-  INSERT INTO messages VALUES (id, NOW(), norm(poster), chan_, message); 
+  INSERT INTO messages VALUES (id, now(), norm(poster), chan_, message);
   PERFORM pg_notify(chan_, id::text);
   RETURN id;
 END;
@@ -165,32 +165,73 @@ COMMENT ON FUNCTION uniq(ANYARRAY) IS
  'Ensures an array contains no duplicates.';
 
 
-CREATE TABLE locks
-( locked    uuid PRIMARY KEY,
-  locking   uuid NOT NULL );
-COMMENT ON TABLE locks IS
+CREATE TABLE lock_log
+( locked    uuid NOT NULL,
+  locking   uuid NOT NULL,
+  timestamp timestamp with time zone NOT NULL,
+  sets_lock bool NOT NULL );
+CREATE INDEX ON lock_log (timestamp);
+CREATE INDEX ON lock_log USING hash(locked);
+CREATE INDEX ON lock_log USING hash(locking);
+COMMENT ON TABLE lock_log IS
  'A message may "lock" another as when a message announces a node\'s intention
   to process a certain job. This is handled by a separate function and table
-  and it is intended to be replaceable.'
+  and it is intended to be replaceable.';
 
-CREATE FUNCTION locking_reply
+CREATE VIEW locks AS SELECT locked, locking, timestamp FROM
+( SELECT DISTINCT locked, first_value(locking) AS locking,
+                  first_value(timestamp) AS timestamp,
+                  first_value(sets_lock) AS sets_lock
+             OVER (PARTITION BY locked ORDER BY timestamp DESC)
+             FROM lock_log
+) AS intermediate WHERE sets_lock;
+COMMENT ON VIEW locks IS 'Messages with outstanding locks.';
+
+CREATE FUNCTION locking
 ( poster text, chan text, message text, parent uuid, disposition disposition )
+RETURNS uuid AS $$
+BEGIN
+  RETURN set_or_unset_lock(poster, chan, message, parent, disposition, TRUE);
+END;
+$$ LANGUAGE plpgsql STRICT;
+COMMENT ON FUNCTION locking
+(poster text, chan text, message text, parent uuid, disposition disposition) IS
+ 'Try to lock a message and reply to it. If a lock is possible, the UUID of
+  the stored reply is returned. If not, the null UUID is returned and nothing
+  is stored.';
+
+CREATE FUNCTION unlocking
+( poster text, chan text, message text, parent uuid, disposition disposition )
+RETURNS uuid AS $$
+BEGIN
+  RETURN set_or_unset_lock(poster, chan, message, parent, disposition, FALSE);
+END;
+$$ LANGUAGE plpgsql STRICT;
+COMMENT ON FUNCTION unlocking
+(poster text, chan text, message text, parent uuid, disposition disposition) IS
+ 'Try to unlock a message and reply to it. If it is locked, then the lock is
+  unset, a new reply is stored and its UUID is returned. If the message is
+  already unlocked, then the null UUID is returned.';
+
+CREATE FUNCTION set_or_unset_lock
+( poster text, chan text, message text, parent uuid, disposition disposition,
+  setting bool )
 RETURNS uuid AS $$
 DECLARE
   id uuid;
 BEGIN
-  SELECT * FROM locks WHERE locked = parent;
-  IF FOUND
-  THEN RAISE unique_violation USING
-             MESSAGE = 'This message has already been locked.';
-  END IF;
-  id := reply(poster, chan, message, parent, disposition);
-  INSERT INTO locks VALUES (parent, id);
-  RETURN id;
+  CASE EXISTS ( SELECT * FROM locks WHERE locked = parent )
+  WHEN setting THEN
+    -- We are trying lock a locked lock or unlock and unlocked lock.
+    RETURN '00000000-0000-0000-0000-000000000000';
+  ELSE
+    id := reply(poster, chan, message, parent, disposition);
+    INSERT INTO locks VALUES (parent, id, now(), setting);
+    RETURN id;
+  END CASE;
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION locking_reply
-(poster text, chan text, message text, parent uuid, disposition disposition) IS
- 'Locks the given message and posts a reply in one step. To be used as a way of
-  atomically accepting a job, for example.';
+( poster text, chan text, message text, parent uuid, disposition disposition,
+  setting bool ) IS 'Implementation behind locking() and unlocking().';
 
