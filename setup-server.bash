@@ -27,6 +27,7 @@ function pg_db {
 sudo -u postgres psql <<\SQL
 CREATE ROLE cloudsat PASSWORD 'none' NOSUPERUSER NOCREATEDB NOCREATEROLE LOGIN;
 CREATE DATABASE cloudsat OWNER cloudsat ENCODING 'UTF8';
+ALTER DATABASE cloudsat SET default_transaction_isolation TO serializable;
 SQL
 }
 
