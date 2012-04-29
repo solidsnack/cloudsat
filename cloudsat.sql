@@ -6,6 +6,10 @@ CREATE SCHEMA cloudsat;
 SET search_path TO cloudsat,public;
 
 
+ ------------------------------------------------------------------------------
+ -------------------------- Core Types & Functions ----------------------------
+ ------------------------------------------------------------------------------
+
 CREATE TABLE messages
 ( uuid      uuid PRIMARY KEY,
   timestamp timestamp with time zone NOT NULL,
@@ -102,6 +106,10 @@ COMMENT ON FUNCTION subscribe(chans text[]) IS
  'Creates subscriptions for a list of channels.';
 
 
+ ------------------------------------------------------------------------------
+ ------------------------- Utilities for Addresses ----------------------------
+ ------------------------------------------------------------------------------
+
 CREATE FUNCTION norm(address text)
 RETURNS text AS $$
 BEGIN
@@ -165,6 +173,10 @@ COMMENT ON FUNCTION uniq(ANYARRAY) IS
  'Ensures an array contains no duplicates.';
 
 
+ ------------------------------------------------------------------------------
+ ----------------------- Advisory Locks for Messages --------------------------
+ ------------------------------------------------------------------------------
+
 CREATE TABLE lock_log
 ( locked    uuid NOT NULL,
   locking   uuid NOT NULL,
@@ -174,9 +186,7 @@ CREATE INDEX ON lock_log (timestamp);
 CREATE INDEX ON lock_log USING hash(locked);
 CREATE INDEX ON lock_log USING hash(locking);
 COMMENT ON TABLE lock_log IS
- 'A message may "lock" another as when a message announces the intention to
-  process a certain job advertized in another message. This is all handled by
-  separate functionality and tables and is intended to be replaceable.';
+ 'Audit log of successful locks and unlocks of messages.';
 
 CREATE VIEW locks AS SELECT locked, locking, timestamp FROM
 ( SELECT DISTINCT locked, first_value(locking) AS locking,
@@ -185,7 +195,7 @@ CREATE VIEW locks AS SELECT locked, locking, timestamp FROM
              OVER (PARTITION BY locked ORDER BY timestamp DESC)
              FROM lock_log
 ) AS intermediate WHERE sets_lock;
-COMMENT ON VIEW locks IS 'Messages with outstanding locks.';
+COMMENT ON VIEW locks IS 'Messages with active locks.';
 
 CREATE FUNCTION locking
 ( poster text, chan text, message text, parent uuid, disposition disposition )
