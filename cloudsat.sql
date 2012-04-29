@@ -174,9 +174,9 @@ CREATE INDEX ON lock_log (timestamp);
 CREATE INDEX ON lock_log USING hash(locked);
 CREATE INDEX ON lock_log USING hash(locking);
 COMMENT ON TABLE lock_log IS
- 'A message may "lock" another as when a message announces a node\'s intention
-  to process a certain job. This is handled by a separate function and table
-  and it is intended to be replaceable.';
+ 'A message may "lock" another as when a message announces the intention to
+  process a certain job advertized in another message. This is all handled by
+  separate functionality and tables and is intended to be replaceable.';
 
 CREATE VIEW locks AS SELECT locked, locking, timestamp FROM
 ( SELECT DISTINCT locked, first_value(locking) AS locking,
