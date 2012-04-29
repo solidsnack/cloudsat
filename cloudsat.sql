@@ -107,7 +107,7 @@ RETURNS text AS $$
 BEGIN
   RETURN trim(leading '.' from lower(trim(trailing '.' from address))) || '.';
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION norm(address text) IS
  'Normalize an address so it is lowercase and has the final dot.';
 
@@ -136,7 +136,7 @@ BEGIN
   res := res || dot;
   RETURN res;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION suffixes(address text) IS
  'Break an address like admin@example.com into rooted pieces like this:
   {com., example.com., admin@example.com.}';
@@ -152,7 +152,7 @@ BEGIN
   END LOOP;
   RETURN uniq(acc);
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION suffixes(addresses text[]) IS
  'Returns the unions of all suffixes of all the addresses.';
 
