@@ -164,3 +164,33 @@ $$ LANGUAGE sql IMMUTABLE;
 COMMENT ON FUNCTION uniq(ANYARRAY) IS
  'Ensures an array contains no duplicates.';
 
+
+CREATE TABLE locks
+( locked    uuid PRIMARY KEY,
+  locking   uuid NOT NULL );
+COMMENT ON TABLE locks IS
+ 'A message may "lock" another as when a message announces a node\'s intention
+  to process a certain job. This is handled by a separate function and table
+  and it is intended to be replaceable.'
+
+CREATE FUNCTION locking_reply
+( poster text, chan text, message text, parent uuid, disposition disposition )
+RETURNS uuid AS $$
+DECLARE
+  id uuid;
+BEGIN
+  SELECT * FROM locks WHERE locked = parent;
+  IF FOUND
+  THEN RAISE unique_violation USING
+             MESSAGE = 'This message has already been locked.';
+  END IF;
+  id := reply(poster, chan, message, parent, disposition);
+  INSERT INTO locks VALUES (parent, id);
+  RETURN id;
+END;
+$$ LANGUAGE plpgsql STRICT;
+COMMENT ON FUNCTION locking_reply
+(poster text, chan text, message text, parent uuid, disposition disposition) IS
+ 'Locks the given message and posts a reply in one step. To be used as a way of
+  atomically accepting a job, for example.';
+
