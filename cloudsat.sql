@@ -128,18 +128,12 @@ DECLARE
   dot text := '.';
   at  text := '@';
 BEGIN
-  res := res || str;
-  pos := position(at in str);      -- Clip leading local@ part.
-  IF pos > 0
-  THEN
-    str := substring(str from pos+1);
-    res := res || str;
-  END IF;
+  pos := position(at in str);      -- Seek past leading local@ part.
   LOOP
-    pos := position(dot in str);
     str := substring(str from pos+1);
     EXIT WHEN '' = str;
     res := res || str;
+    pos := position(dot in str);
   END LOOP;
   res := res || dot;
   RETURN res;
