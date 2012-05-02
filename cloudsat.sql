@@ -21,6 +21,9 @@ CREATE INDEX ON messages USING hash(poster);
 CREATE INDEX ON messages USING hash(chan);
 CREATE INDEX ON messages USING gist(to_tsvector('english', message));
 
+CREATE TYPE disposition AS ENUM
+( 'ignored', 'acknowledged', 'info', 'problem', 'done' );
+
 CREATE TABLE threads
 ( before      uuid NOT NULL REFERENCES messages(uuid),
   disposition disposition NOT NULL,
@@ -42,9 +45,6 @@ CREATE INDEX ON registered (timestamp);
 CREATE INDEX ON registered (chans);
 COMMENT ON TABLE registered IS
  'Explicit information about connected clients and their subscriptions.';
-
-CREATE TYPE disposition AS ENUM
-( 'ignored', 'acknowledged', 'info', 'problem', 'done' );
 
 
 CREATE FUNCTION post(poster text, chan text, message text)
