@@ -53,8 +53,12 @@ SELECT nick, procpid, backend_start, timestamp, chans FROM
 ( SELECT registered.*, rank()
     OVER (PARTITION BY nick ORDER BY timestamp DESC) FROM registered
 ) AS intermediate WHERE rank = 1;
+COMMENT ON VIEW recent IS
+ 'Most up to date record for each registered (or unregistered) client.';
 
-CREATE VIEW connected AS SELECT * FROM recent NATURAL JOIN pg_stat_activity
+CREATE VIEW connections AS SELECT * FROM recent NATURAL JOIN pg_stat_activity
+COMMENT ON VIEW connections IS
+ 'Connection info for every active client.';
 
 CREATE FUNCTION post(poster text, chan text, message text)
 RETURNS uuid AS $$
