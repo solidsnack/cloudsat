@@ -207,12 +207,9 @@ COMMENT ON TABLE lock_log IS
  'Audit log of successful locks and unlocks of messages.';
 
 CREATE VIEW locks AS SELECT locked, locking, timestamp FROM
-( SELECT DISTINCT locked, first_value(locking) AS locking,
-                  first_value(timestamp) AS timestamp,
-                  first_value(sets_lock) AS sets_lock
-             OVER (PARTITION BY locked ORDER BY timestamp DESC)
-             FROM lock_log
-) AS intermediate WHERE sets_lock;
+( SELECT lock_log.*, rank()
+    OVER (PARTITION BY locked ORDER BY timestamp DESC) FROM lock_log
+) AS intermediate WHERE sets_lock AND rank = 1;
 COMMENT ON VIEW locks IS 'Messages with active locks.';
 
 CREATE FUNCTION locking
