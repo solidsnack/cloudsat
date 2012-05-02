@@ -56,7 +56,7 @@ SELECT nick, procpid, backend_start, timestamp, chans FROM
 COMMENT ON VIEW recent IS
  'Most up to date record for each registered (or unregistered) client.';
 
-CREATE VIEW connections AS SELECT * FROM recent NATURAL JOIN pg_stat_activity
+CREATE VIEW connections AS SELECT * FROM recent NATURAL JOIN pg_stat_activity;
 COMMENT ON VIEW connections IS
  'Connection info for every active client.';
 
