@@ -35,10 +35,12 @@ CREATE INDEX ON threads (after);
 COMMENT ON TABLE threads IS 'Links messages with their replies.';
 
 CREATE TABLE registered
-( procpid       integer NOT NULL,
+( nick          text NOT NULL,
+  procpid       integer NOT NULL,
   backend_start timestamp with time zone NOT NULL,
   timestamp     timestamp with time zone NOT NULL,
   chans         text[] NOT NULL );
+CREATE INDEX ON registered (name);
 CREATE INDEX ON registered (procpid);
 CREATE INDEX ON registered (backend_start);
 CREATE INDEX ON registered (timestamp);
@@ -85,12 +87,24 @@ COMMENT ON FUNCTION posts(chans text[]) IS
 
 CREATE FUNCTION register(addresses text[])
 RETURNS VOID AS $$
+DECLARE
+  nick     text    := addresses[1];
+  suffixes text[]  := suffixes(addresses);
+  procpid  integer;
+  backend_start timestamp with time zone;
 BEGIN
-  PERFORM subscribe(suffixes(addresses));
+  SELECT procpid, backend_start
+    FROM pg_stat_activity
+   WHERE procpid = pg_backend_pid()
+    INTO STRICT procpid, backend_start;
+  PERFORM subscribe(suffixes);
+  INSERT INTO registered
+       VALUES (nick, procpid, backend_start, now(), suffixes);
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION register(addresses text[]) IS
- 'Create subscriptions and register client.';
+ 'Create subscriptions and register client. The first address shall be taken to
+  to be the "name" of the client.';
 
 CREATE FUNCTION subscribe(chans text[])
 RETURNS VOID AS $$
@@ -235,7 +249,7 @@ BEGIN
   END CASE;
 END;
 $$ LANGUAGE plpgsql STRICT;
-COMMENT ON FUNCTION locking_reply
+COMMENT ON FUNCTION set_or_unset_lock
 ( poster text, chan text, message text, parent uuid, disposition disposition,
   setting bool ) IS 'Implementation behind locking() and unlocking().';
 
