@@ -48,6 +48,9 @@ CREATE INDEX ON registered (chans);
 COMMENT ON TABLE registered IS
  'Explicit information about connected clients and their subscriptions.';
 
+CREATE VIEW connected AS
+SELECT * FROM registered NATURAL JOIN pg_stat_activity ;
+
 
 CREATE FUNCTION post(poster text, chan text, message text)
 RETURNS uuid AS $$
