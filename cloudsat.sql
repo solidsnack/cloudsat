@@ -127,7 +127,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION subscribe(chans text[]) IS
- 'Creates subscriptions for a list of channels.';
+ 'Create subscriptions for a list of channels.';
 
 
  ------------------------------------------------------------------------------
