@@ -93,16 +93,15 @@ RETURNS VOID AS $$
 DECLARE
   nick     text    := addresses[1];
   suffixes text[]  := suffixes(addresses);
-  procpid  integer;
-  backend_start timestamp with time zone;
+  pid      integer;
+  t        timestamp with time zone;
 BEGIN
   SELECT procpid, backend_start
     FROM pg_stat_activity
    WHERE procpid = pg_backend_pid()
-    INTO STRICT procpid, backend_start;
+    INTO STRICT pid, t;
   PERFORM subscribe(suffixes);
-  INSERT INTO registered
-       VALUES (nick, procpid, backend_start, now(), suffixes);
+  INSERT INTO registered VALUES (nick, pid, t, now(), suffixes);
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION register(addresses text[]) IS
