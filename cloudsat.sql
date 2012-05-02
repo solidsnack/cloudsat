@@ -48,14 +48,11 @@ CREATE INDEX ON registered (chans);
 COMMENT ON TABLE registered IS
  'Explicit information about connected clients and their subscriptions.';
 
-CREATE VIEW recent AS SELECT * FROM
-( SELECT DISTINCT nick, first_value(procpid) AS procpid,
-                        first_value(backend_start) AS backend_start,
-                        first_value(timestamp) AS timestamp,
-                        first_value(chans) AS chans
-             OVER (PARTITION BY nick ORDER BY timestamp DESC)
-             FROM registered
-) AS intermediate;
+CREATE VIEW recent AS
+SELECT nick, procpid, backend_start, timestamp, chans FROM
+( SELECT registered.*, rank()
+    OVER (PARTITION BY nick ORDER BY timestamp DESC) FROM registered
+) AS intermediate WHERE rank = 1;
 
 CREATE VIEW connected AS SELECT * FROM recent NATURAL JOIN pg_stat_activity
 
