@@ -103,11 +103,20 @@ DECLARE
   suffixes text[]  := suffixes(addresses);
   pid      integer;
   t        timestamp with time zone;
+  stale    text[];
+  chan     text;
 BEGIN
   SELECT procpid, backend_start
     FROM pg_stat_activity
    WHERE procpid = pg_backend_pid()
     INTO STRICT pid, t;
+  SELECT array_agg(pg_listening_channels)
+    FROM pg_listening_channels()
+   WHERE NOT pg_listening_channels = ANY (suffixes)
+    INTO STRICT stale;
+  FOREACH chan IN ARRAY stale LOOP
+    EXECUTE 'UNLISTEN ' || quote_ident(chan);
+  END LOOP;
   PERFORM subscribe(suffixes);
   INSERT INTO registered VALUES (nick, pid, t, now(), suffixes);
 END;
