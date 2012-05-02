@@ -66,34 +66,34 @@ SELECT * FROM r NATURAL JOIN pg_stat_activity;
 COMMENT ON VIEW connections IS
  'Connection info for every active client.';
 
-CREATE FUNCTION post(poster text, chan text, message text)
+CREATE FUNCTION post(poster text, address text, message text)
 RETURNS uuid AS $$
 DECLARE
   id    uuid := uuid_generate_v1();
-  chan_ text := norm(chan);
+  chan  text := norm(nonlocal(address));
 BEGIN
-  INSERT INTO messages VALUES (id, now(), norm(poster), chan_, message);
-  PERFORM pg_notify(chan_, id::text);
+  INSERT INTO messages VALUES (id, now(), norm(poster), chan, message);
+  PERFORM pg_notify(chan, id::text||' '||address);
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT;
-COMMENT ON FUNCTION post(poster text, chan text, message text) IS
+COMMENT ON FUNCTION post(poster text, address text, message text) IS
  'Creates a new thread on the message board with an initial message.';
 
 CREATE FUNCTION reply
-( poster text, chan text, message text, parent uuid, disposition disposition )
+(poster text, address text, message text, parent uuid, disposition disposition)
 RETURNS uuid AS $$
 DECLARE
   id uuid;
 BEGIN
-  id := post(poster, chan, message);
+  id := post(poster, address, message);
   INSERT INTO threads VALUES (parent, disposition, id);
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION reply
-(poster text, chan text, message text, parent uuid, disposition disposition) IS
- 'Posts a reply in an existing thread, under the given message.';
+(poster text, address text, message text, parent uuid, disposition disposition)
+IS 'Posts a reply in an existing thread, under the given message.';
 
 CREATE FUNCTION posts()
 RETURNS SETOF messages AS $$
@@ -169,21 +169,29 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION norm(address text) IS
  'Normalize an address so it is lowercase and has the final dot.';
 
+CREATE FUNCTION nonlocal(address text)
+RETURNS text AS $$
+BEGIN
+  RETURN substring(address from position('@' in address)+1);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+COMMENT ON FUNCTION nonlocal(address text) IS
+ 'Remove the local part of an address.';
+
 CREATE FUNCTION suffixes(address text)
 RETURNS text[] AS $$
 DECLARE
-  str text := norm(address);
+  str text := norm(nonlocal(address));
   pos int;
   res text[];
   dot text := '.';
-  at  text := '@';
 BEGIN
-  pos := position(at in str);      -- Seek past leading local@ part.
+  res := res || str;
   LOOP
+    pos := position(dot in str);
     str := substring(str from pos+1);
     EXIT WHEN '' = str;
     res := res || str;
-    pos := position(dot in str);
   END LOOP;
   res := res || dot;
   RETURN res;
