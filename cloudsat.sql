@@ -112,10 +112,11 @@ COMMENT ON FUNCTION posts(chans text[]) IS
  'Searches for posts in the given channels.';
 
 CREATE FUNCTION register(addresses text[])
-RETURNS VOID AS $$
+RETURNS text[] AS $$
 DECLARE
-  nick     text    := addresses[1];
-  suffixes text[]  := suffixes(addresses);
+  empty    text[] := ARRAY[]::text[];
+  nick     text   := addresses[1];
+  suffixes text[] := suffixes(addresses);
   pid      integer;
   t        timestamp with time zone;
   stale    text[];
@@ -129,13 +130,16 @@ BEGIN
     FROM pg_listening_channels()
    WHERE NOT pg_listening_channels = ANY (suffixes)
     INTO STRICT stale;
-  IF NOT stale = ARRAY[]::text[] THEN
+  IF NOT stale = empty THEN
     FOREACH chan IN ARRAY stale LOOP
       EXECUTE 'UNLISTEN ' || quote_ident(chan);
     END LOOP;
   END IF;
-  PERFORM subscribe(suffixes);
-  INSERT INTO registered VALUES (nick, pid, t, now(), suffixes);
+  IF NOT addresses = empty THEN
+    PERFORM subscribe(suffixes);
+    INSERT INTO registered VALUES (nick, pid, t, now(), suffixes);
+  END IF;
+  RETURN suffixes;
 END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION register(addresses text[]) IS
