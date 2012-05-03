@@ -34,9 +34,7 @@ SQL
 function ram_for_pg {
   local d=/var/lib/postgresql
   mkdir -p "$d"
-  mount -t tmpfs -o size=8g tmpfs "$d"
-  # chmod 0700 "$d"
-  # chown postgres:postgres "$d"
+  mount -t tmpfs -o size=64% tmpfs "$d"
 }
 
 function all {
