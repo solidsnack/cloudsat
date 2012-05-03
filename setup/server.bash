@@ -31,10 +31,24 @@ ALTER DATABASE cloudsat SET default_transaction_isolation TO serializable;
 SQL
 }
 
+function total_kB {
+  cat /proc/meminfo | sed -rn '/^MemTotal: +([0-9]+) kB/ { s//\1/ ; p }'
+}
+
+# Take 5/8 of RAM or RAM minus 8G, whichever is the greater. That's 6G for
+# peak transient connection load of 2000 and then 2G for general use.
+function reservation {
+  local total_kB="$(total_kB)"
+  local proportional="$(bc <<<"$total_kB * 5/8")"
+  local absolute="$(bc <<<"$total_kB - (8 * 1024 * 1024)")"
+  [[ $absolute -gt $proportional ]] && echo "$absolute" ||
+                                       echo "$proportional"
+}
+
 function ram_for_pg {
   local d=/var/lib/postgresql
   mkdir -p "$d"
-  mount -t tmpfs -o size=64% tmpfs "$d"
+  mount -t tmpfs -o size="$(reservation)"k tmpfs "$d"
 }
 
 function all {
