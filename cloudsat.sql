@@ -111,6 +111,13 @@ $$ LANGUAGE sql STRICT;
 COMMENT ON FUNCTION posts(text[]) IS
  'Searches for posts in the given channels.';
 
+CREATE FUNCTION messages(uuid[])
+RETURNS SETOF messages AS $$
+SELECT * FROM messages WHERE uuid = ANY ($1);
+$$ LANGUAGE sql STRICT;
+COMMENT ON FUNCTION messages(uuid[]) IS
+ 'Retrieve messages by UUID.';
+
 CREATE FUNCTION register(addresses text[])
 RETURNS text[] AS $$
 DECLARE
