@@ -104,11 +104,11 @@ $$ LANGUAGE sql STRICT;
 COMMENT ON FUNCTION posts(chans text[]) IS
  'Searches for posts which match the present connections subscriptions.';
 
-CREATE FUNCTION posts(chans text[])
+CREATE FUNCTION posts(text[])
 RETURNS SETOF messages AS $$
 SELECT * FROM messages WHERE chan = ANY ($1);
 $$ LANGUAGE sql STRICT;
-COMMENT ON FUNCTION posts(chans text[]) IS
+COMMENT ON FUNCTION posts(text[]) IS
  'Searches for posts in the given channels.';
 
 CREATE FUNCTION register(addresses text[])
