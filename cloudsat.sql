@@ -95,13 +95,11 @@ COMMENT ON FUNCTION reply
 (poster text, address text, message text, parent uuid, disposition disposition)
 IS 'Posts a reply in an existing thread, under the given message.';
 
-CREATE FUNCTION posts()
-RETURNS SETOF messages AS $$
+CREATE VIEW posts AS
 SELECT messages.*
   FROM messages, pg_listening_channels()
  WHERE chan = pg_listening_channels;
-$$ LANGUAGE sql STRICT;
-COMMENT ON FUNCTION posts(chans text[]) IS
+COMMENT ON VIEW posts IS
  'Searches for posts which match the present connections subscriptions.';
 
 CREATE FUNCTION posts(text[])
@@ -110,13 +108,6 @@ SELECT * FROM messages WHERE chan = ANY ($1);
 $$ LANGUAGE sql STRICT;
 COMMENT ON FUNCTION posts(text[]) IS
  'Searches for posts in the given channels.';
-
-CREATE FUNCTION messages(uuid[])
-RETURNS SETOF messages AS $$
-SELECT * FROM messages WHERE uuid = ANY ($1);
-$$ LANGUAGE sql STRICT;
-COMMENT ON FUNCTION messages(uuid[]) IS
- 'Retrieve messages by UUID.';
 
 CREATE FUNCTION register(addresses text[])
 RETURNS text[] AS $$
