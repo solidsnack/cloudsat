@@ -3,7 +3,7 @@ CREATE EXTENSION "uuid-ossp"; -- Needed for stored procedure. Loaded here so
                               -- we fail before making any changes to the
                               -- database if it's not available.
 CREATE SCHEMA cloudsat;
-SET search_path TO cloudsat,public;
+SET search_path TO cloudsat, public, pg_temp;
 
 
  ------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ BEGIN
   PERFORM pg_notify(chan, id::text||' '||address);
   RETURN id;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION post(poster text, address text, message text) IS
  'Creates a new thread on the message board with an initial message.';
 
@@ -90,7 +90,7 @@ BEGIN
   INSERT INTO threads VALUES (parent, disposition, id);
   RETURN id;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION reply
 (poster text, address text, message text, parent uuid, disposition disposition)
 IS 'Posts a reply in an existing thread, under the given message.';
@@ -139,7 +139,7 @@ BEGIN
   END IF;
   RETURN suffixes;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION register(addresses text[]) IS
  'Create subscriptions and register client. The first address shall be taken to
   to be the "name" of the client.';
@@ -153,7 +153,7 @@ BEGIN
     EXECUTE 'LISTEN ' || quote_ident(chan);
   END LOOP;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION subscribe(chans text[]) IS
  'Create subscriptions for a list of channels.';
 
@@ -170,7 +170,7 @@ BEGIN
   END LOOP;
   RETURN present;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION root(uuid) IS
  'Find the root of the thread this message is on. (The first message in a
   thread is its own root).';
@@ -272,7 +272,7 @@ RETURNS uuid AS $$
 BEGIN
   RETURN set_or_unset_lock(poster, chan, message, parent, disposition, TRUE);
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION locking
 (poster text, chan text, message text, parent uuid, disposition disposition) IS
  'Try to lock a message and reply to it. If a lock is possible, the UUID of
@@ -285,7 +285,7 @@ RETURNS uuid AS $$
 BEGIN
   RETURN set_or_unset_lock(poster, chan, message, parent, disposition, FALSE);
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION unlocking
 (poster text, chan text, message text, parent uuid, disposition disposition) IS
  'Try to unlock a message and reply to it. If it is locked, then the lock is
@@ -309,7 +309,7 @@ BEGIN
     RETURN id;
   END CASE;
 END;
-$$ LANGUAGE plpgsql STRICT;
+$$ LANGUAGE plpgsql STRICT SET search_path TO cloudsat, pg_temp;
 COMMENT ON FUNCTION set_or_unset_lock
 ( poster text, chan text, message text, parent uuid, disposition disposition,
   setting bool ) IS 'Implementation behind locking() and unlocking().';
