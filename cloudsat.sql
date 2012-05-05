@@ -88,6 +88,7 @@ DECLARE
 BEGIN
   id := post(poster, address, message);
   INSERT INTO threads VALUES (parent, disposition, id);
+  PERFORM pg_notify(root(parent)::text, id::text||' '||address);
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT;
@@ -156,6 +157,24 @@ END;
 $$ LANGUAGE plpgsql STRICT;
 COMMENT ON FUNCTION subscribe(chans text[]) IS
  'Create subscriptions for a list of channels.';
+
+CREATE FUNCTION root(uuid)
+RETURNS uuid AS $$
+DECLARE
+  parent  uuid;
+  present uuid := $1;
+BEGIN
+  LOOP
+    SELECT before FROM threads WHERE after = present INTO parent;
+    EXIT WHEN NOT FOUND;
+    present := parent;
+  END LOOP;
+  RETURN present;
+END;
+$$ LANGUAGE plpgsql STRICT;
+COMMENT ON FUNCTION root(uuid) IS
+ 'Find the root of the thread this message is on. (The first message in a
+  thread is its own root).';
 
 
  ------------------------------------------------------------------------------
