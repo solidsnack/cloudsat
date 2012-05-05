@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+d = File.dirname($0)
+$LOAD_PATH << "#{d}/../lib" if File.directory? "#{d}/../lib"
+
+require 'pp'
+require 'rubygems'
+require 'cloudsat'
+
+module Cloudsat::CLI
+extend self
+def handle_args(argv)
+  addresses = []
+  conninfo  = ""
+  mode = :address
+  argv.each do |arg|
+    case arg
+    when '--conninfo'
+      mode = :conninfo
+    else
+      case mode
+      when :addresses then addresses << arg
+      when :conninfo
+        case arg
+        when '-' then conninfo = STDIN.read
+        else          conninfo = arg
+        end
+        mode = :addresses
+      end
+    end
+  end
+  [ addresses, conninfo ]
+end
+def start
+  Cloudsat::Bot.new(handle_args(ARGV))
+end
+def main
+  bot = start
+  bot.join
+  bot.post('cloudsat@cloudsat', 'hello')
+  bot.receive do |message|
+    pp message
+  end
+end
+end
+
+
