@@ -88,7 +88,6 @@ DECLARE
 BEGIN
   id := post(poster, address, message);
   INSERT INTO threads VALUES (parent, disposition, id);
-  PERFORM pg_notify(root(parent)::text, id::text||' '||address);
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT;
