@@ -190,7 +190,7 @@ RETURNS text AS $$
 BEGIN
   RETURN trim(leading '.' from lower(trim(trailing '.' from address))) || '.';
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 COMMENT ON FUNCTION norm(address text) IS
  'Normalize an address so it is lowercase and has the final dot.';
 
@@ -212,7 +212,7 @@ BEGIN
   res := res || dot;
   RETURN res;
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 COMMENT ON FUNCTION suffixes(address text) IS
  'Break an address like example.com into rooted pieces: ., com., example.com.';
 
@@ -227,7 +227,7 @@ BEGIN
   END LOOP;
   RETURN uniq(acc);
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
 COMMENT ON FUNCTION suffixes(addresses text[]) IS
  'Returns the unions of all suffixes of all the addresses.';
 
@@ -235,7 +235,7 @@ CREATE FUNCTION uniq(ANYARRAY)
 RETURNS ANYARRAY AS $$
 SELECT ARRAY( SELECT DISTINCT $1[s.i] FROM
               generate_series(array_lower($1,1), array_upper($1,1)) AS s(i) );
-$$ LANGUAGE sql IMMUTABLE;
+$$ LANGUAGE sql IMMUTABLE STRICT;
 COMMENT ON FUNCTION uniq(ANYARRAY) IS
  'Ensures an array contains no duplicates.';
 
