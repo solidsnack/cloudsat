@@ -11,7 +11,7 @@ extend self
 def handle_args(argv)
   addresses = []
   conninfo  = ""
-  mode = :address
+  mode = :addresses
   argv.each do |arg|
     case arg
     when '--conninfo'
@@ -31,7 +31,7 @@ def handle_args(argv)
   [ addresses, conninfo ]
 end
 def start
-  Cloudsat::Bot.new(handle_args(ARGV))
+  Cloudsat::Bot.new(*handle_args(ARGV))
 end
 def main
   bot = start
@@ -43,4 +43,5 @@ def main
 end
 end
 
+Cloudsat::CLI.main if __FILE__ == $0
 

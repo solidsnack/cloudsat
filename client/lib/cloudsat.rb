@@ -25,16 +25,20 @@ class Bot
   end
   def join
     connect
-    register(@addresses) # Must check okayitude
+    register(@addresses) do |res|
+      require 'pp'
+      pp res
+      res.each{|t| pp t }
+    end
   end
   def command(cmd, *args, &block)
     placeholders = (1..args.length).map{|n| "$#{n}" }.join(', ')
-    escaped = @connection.escape_ident(cmd)
+    escaped = @connection.quote_ident(cmd)
     s = "SELECT * FROM cloudsat.#{escaped}(#{placeholders});"
     @connection.exec(s, args, &block)
   end
   def command_with_array(cmd, args, type, &block)
-    escaped = @connection.escape_ident(cmd)
+    escaped = @connection.quote_ident(cmd)
     s = "SELECT * FROM cloudsat.#{escaped}(#{array(args, type)});"
     @connection.exec(s, &block)
   end
@@ -52,7 +56,8 @@ class Bot
     end
   end
   def array(args, type)
-    "ARRAY[#{args.map{|s| "'#{@connection.escape(s)}'" }.join(', ')}]::#{type}"
+    args_ = args.map{|s| "'#{@connection.escape(s)}'" }.join(', ')
+    "ARRAY[#{args_}]::#{type}[]"
   end
   def fetch(*messages, &block)
     as_args = messages.map{|s| "'#{@connection.escape(s)}'" }.join(', ')
@@ -65,29 +70,24 @@ SELECT
     @connection.exec('SELECT * FROM cloudsat.posts LIMIT 64;', &block)
   end
   def post(*args, &block)
-    wrapped('post', *args, &block)
+    command('post', *([nick]+args), &block)
   end
   def reply(*args, &block)
-    wrapped('reply', *args, &block)
+    command('reply', *([nick]+args), &block)
   end
   def locking(*args, &block)
-    wrapped('locking', *args, &block)
+    command('locking', *([nick]+args), &block)
   end
   def unlocking(*args, &block)
-    wrapped('unlocking', *args, &block)
+    command('unlocking', *([nick]+args), &block)
   end
 private
   def wrapped(cmd, *args, &block)
-    command(cmd, *([nick]+args)) do |res|
-      # TODO: Error handling here.
-      res.each(&block)
-    end
+    command(cmd, *([nick]+args), &block)
   end
-  def register(addresses)
-    command_with_array('register', addresses, 'uuid') do |res|
-      # TODO: Error handling.
-      res.values.first
-    end
+  def register(addresses, &block)
+    STDERR.puts 'register'
+    command_with_array('register', addresses, 'text', &block)
   end
 end
 
