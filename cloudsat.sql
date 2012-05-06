@@ -48,24 +48,6 @@ CREATE INDEX ON registered (chans);
 COMMENT ON TABLE registered IS
  'Explicit information about connected clients and their subscriptions.';
 
-CREATE VIEW recent AS
-SELECT nick, procpid, backend_start, timestamp, chans FROM
-( SELECT registered.*, rank()
-    OVER (PARTITION BY nick ORDER BY timestamp DESC) FROM registered
-) AS intermediate WHERE rank = 1;
-COMMENT ON VIEW recent IS
- 'Most up to date record for each registered (or unregistered) client.';
-
-CREATE VIEW connections AS
-WITH r AS
-( SELECT nick, procpid, backend_start, timestamp, chans FROM
-  ( SELECT recent.*, rank()
-      OVER (PARTITION BY procpid ORDER BY timestamp DESC) FROM recent
-  ) AS intermediate WHERE rank = 1 )
-SELECT * FROM r NATURAL JOIN pg_stat_activity;
-COMMENT ON VIEW connections IS
- 'Connection info for every active client.';
-
 CREATE FUNCTION post(poster text, address text, message text)
 RETURNS uuid AS $$
 DECLARE
@@ -73,11 +55,10 @@ DECLARE
   chan  text := norm(address);
   pnorm text := norm(poster);
   t     timestamp with time zone := now();
-  rfc   text := to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
   s     text;
 BEGIN
   INSERT INTO messages VALUES (id, t, pnorm, chan, message);
-  s := id::text||' '||rfc||' '||pnorm||' '||chan||' // '||message;
+  s := id::text||' '||iso8601utc(t)||' '||pnorm||' '||chan||' // '||message;
   PERFORM pg_notify(chan, s);
   RETURN id;
 END;
@@ -99,13 +80,6 @@ $$ LANGUAGE plpgsql STRICT SET search_path FROM CURRENT;
 COMMENT ON FUNCTION reply
 (poster text, address text, message text, parent uuid, disposition disposition)
 IS 'Posts a reply in an existing thread, under the given message.';
-
-CREATE VIEW inbox AS
-SELECT messages.*
-  FROM messages, pg_listening_channels()
- WHERE chan = pg_listening_channels;
-COMMENT ON VIEW inbox IS
- 'Searches for posts which match the subscriptions of the present connection.';
 
 CREATE FUNCTION posts(text[])
 RETURNS SETOF messages AS $$
@@ -182,7 +156,7 @@ COMMENT ON FUNCTION root(uuid) IS
 
 
  ------------------------------------------------------------------------------
- ------------------------- Utilities for Addresses ----------------------------
+ ----------------------- Utility Views and Functions --------------------------
  ------------------------------------------------------------------------------
 
 CREATE FUNCTION norm(address text)
@@ -238,6 +212,41 @@ SELECT ARRAY( SELECT DISTINCT $1[s.i] FROM
 $$ LANGUAGE sql IMMUTABLE STRICT;
 COMMENT ON FUNCTION uniq(ANYARRAY) IS
  'Ensures an array contains no duplicates.';
+
+CREATE FUNCTION iso8601utc(t timestamp with time zone)
+RETURNS text AS $$
+BEGIN
+  RETURN to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS.MS UTC');
+END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+COMMENT ON FUNCTION iso8601utc(t timestamp with time zone) IS
+ 'Returns a millisecond precision ISO 8601 UTC timestamp.';
+
+CREATE VIEW inbox AS
+SELECT uuid, iso8601utc(timestamp) AS timestamp, poster, chan, message
+  FROM messages, pg_listening_channels()
+ WHERE chan = pg_listening_channels;
+COMMENT ON VIEW inbox IS
+ 'Searches for posts which match the subscriptions of the present connection
+  and formats their timestamps in a style similar to notifications.';
+
+CREATE VIEW recent AS
+SELECT nick, procpid, backend_start, timestamp, chans FROM
+( SELECT registered.*, rank()
+    OVER (PARTITION BY nick ORDER BY timestamp DESC) FROM registered
+) AS intermediate WHERE rank = 1;
+COMMENT ON VIEW recent IS
+ 'Most up to date record for each registered (or unregistered) client.';
+
+CREATE VIEW connections AS
+WITH r AS
+( SELECT nick, procpid, backend_start, timestamp, chans FROM
+  ( SELECT recent.*, rank()
+      OVER (PARTITION BY procpid ORDER BY timestamp DESC) FROM recent
+  ) AS intermediate WHERE rank = 1 )
+SELECT * FROM r NATURAL JOIN pg_stat_activity;
+COMMENT ON VIEW connections IS
+ 'Connection info for every active client.';
 
 
  ------------------------------------------------------------------------------
