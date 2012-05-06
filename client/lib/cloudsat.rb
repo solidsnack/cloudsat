@@ -62,7 +62,7 @@ class Bot
   def fetch(*messages, &block)
     as_args = messages.map{|s| "'#{@connection.escape(s)}'" }.join(', ')
     s = <<SELECT
-SELECT * FROM cloudsat.messages WHERE ANY uuid = (#{array(messages, 'uuid')});
+SELECT * FROM cloudsat.messages WHERE uuid = ANY (#{array(messages, 'uuid')});
 SELECT
     @connection.exec(s, &block)
   end
