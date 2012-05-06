@@ -100,12 +100,12 @@ COMMENT ON FUNCTION reply
 (poster text, address text, message text, parent uuid, disposition disposition)
 IS 'Posts a reply in an existing thread, under the given message.';
 
-CREATE VIEW posts AS
+CREATE VIEW inbox AS
 SELECT messages.*
   FROM messages, pg_listening_channels()
  WHERE chan = pg_listening_channels;
-COMMENT ON VIEW posts IS
- 'Searches for posts which match the present connections subscriptions.';
+COMMENT ON VIEW inbox IS
+ 'Searches for posts which match the subscriptions of the present connection.';
 
 CREATE FUNCTION posts(text[])
 RETURNS SETOF messages AS $$
