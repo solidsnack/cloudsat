@@ -77,7 +77,7 @@ DECLARE
   s     text;
 BEGIN
   INSERT INTO messages VALUES (id, t, pnorm, chan, message);
-  s := id::text||' '|rfc||' '||pnorm||' '||chan||' '||message;
+  s := id::text||' '||rfc||' '||pnorm||' '||chan||' '||message;
   PERFORM pg_notify(chan, s);
   RETURN id;
 END;
