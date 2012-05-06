@@ -76,7 +76,7 @@ DECLARE
   rfc   text := to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
   s     text;
 BEGIN
-  INSERT INTO messages VALUES (id, t, pnorm, anorm, message);
+  INSERT INTO messages VALUES (id, t, pnorm, chan, message);
   s := id::text||' '|rfc||' '||pnorm||' '||chan||' '||message;
   PERFORM pg_notify(chan, s);
   RETURN id;
