@@ -73,7 +73,7 @@ DECLARE
   chan  text := norm(nonlocal(address));
 BEGIN
   INSERT INTO messages VALUES (id, now(), norm(poster), chan, message);
-  PERFORM pg_notify(chan, id::text||' '||address);
+  PERFORM pg_notify(chan, id::text||' '||norm(address));
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT SET search_path FROM CURRENT;
