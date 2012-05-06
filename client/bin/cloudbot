@@ -2,7 +2,7 @@
 d = File.dirname($0)
 $LOAD_PATH << "#{d}/../lib" if File.directory? "#{d}/../lib"
 
-require 'pp'
+require 'yaml'
 require 'rubygems'
 require 'cloudsat'
 
@@ -36,9 +36,17 @@ end
 def main
   bot = start
   bot.join
-  bot.post('cloudsat@cloudsat', 'hello')
-  bot.receive do |message|
-    pp message
+  STDERR.puts "LISTENing on: #{bot.addresses.join(' ')}"
+  STDERR.puts "Sending hello to cloudsat..."
+  bot.post('cloudsat', 'hello')
+  STDERR.puts "Waiting for messages."
+  bot.inbox do |message|
+    STDOUT.puts(Cloudsat::Message.yaml(message))
+  end
+  loop do
+    bot.receive do |message|
+      STDOUT.puts(Cloudsat::Message.yaml(message))
+    end
   end
 end
 end

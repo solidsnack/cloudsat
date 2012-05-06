@@ -1,7 +1,7 @@
-require 'pg'
-
+require 'yaml'
 require 'socket'
 
+require 'pg'
 
 module Cloudsat
 
@@ -25,11 +25,7 @@ class Bot
   end
   def join
     connect
-    register(@addresses) do |res|
-      require 'pp'
-      pp res
-      res.each{|t| pp t }
-    end
+    register(@addresses)
   end
   def command(cmd, *args, &block)
     placeholders = (1..args.length).map{|n| "$#{n}" }.join(', ')
@@ -43,16 +39,9 @@ class Bot
     @connection.exec(s, &block)
   end
   def receive(&block) # The full bodies of all messages are retrieved.
-    @connection.wait_for_notify do |chan, _, meta|
-      uuid, poster = meta.split(' ');
-      # Ignore notifications that aren't in the right format since we have
-      # to look up a UUID in the end.
-      if /[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/.match(uuid) and poster
-        fetch(uuid) do |res|
-          # TODO: Do error handling here...
-          res.each(&block)
-        end
-      end
+    @connection.wait_for_notify do |chan, _, data|
+      parsed = Message.parse(data)
+      yield parsed if parsed
     end
   end
   def array(args, type)
@@ -67,7 +56,9 @@ SELECT
     @connection.exec(s, &block)
   end
   def inbox(&block)
-    @connection.exec('SELECT * FROM cloudsat.posts LIMIT 64;', &block)
+    @connection.exec('SELECT * FROM cloudsat.inbox LIMIT 64;') do |res|
+      res.each(&block)
+    end
   end
   def post(*args, &block)
     command('post', *([nick]+args), &block)
@@ -89,6 +80,25 @@ private
     STDERR.puts 'register'
     command_with_array('register', addresses, 'text', &block)
   end
+end
+
+module Message
+UUID_RE = /[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}/
+extend self
+def yaml(message)
+  "---\n" + %w| uuid timestamp poster chan message |.map do |k|
+              YAML.dump(k=>message[k]).lines.to_a[1..-1]
+            end.join('')
+end
+def parse(s)
+  meta, message = s.split(' // ', 2);
+  uuid, date, time, tz, poster, chan = meta.split(' ');
+  if [uuid, date, time, tz, poster, chan, message].all? and UUID_RE.match(uuid)
+    { 'uuid'=>uuid, 'timestamp'=>"#{date} #{time} #{tz}",
+      'poster'=>poster, 'chan'=>chan,
+      'message'=>message }
+  end
+end
 end
 
 end
