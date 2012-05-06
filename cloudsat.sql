@@ -13,9 +13,9 @@ SET search_path TO cloudsat, public, pg_temp;
 CREATE TABLE messages
 ( uuid      uuid PRIMARY KEY,
   timestamp timestamp with time zone NOT NULL,
-  poster    text NOT NULL,
-  chan      text NOT NULL,
-  message   text NOT NULL );
+  poster    text NOT NULL CHECK ( octet_length(poster)  <= 256 ),
+  chan      text NOT NULL CHECK ( octet_length(chan)    <= 256 ),
+  message   text NOT NULL CHECK ( octet_length(message) <= 4096 ) );
 CREATE INDEX ON messages (timestamp);
 CREATE INDEX ON messages USING hash(poster);
 CREATE INDEX ON messages USING hash(chan);
@@ -70,10 +70,15 @@ CREATE FUNCTION post(poster text, address text, message text)
 RETURNS uuid AS $$
 DECLARE
   id    uuid := uuid_generate_v1();
-  chan  text := norm(nonlocal(address));
+  chan  text := norm(address);
+  pnorm text := norm(poster);
+  t     timestamp with time zone := now();
+  rfc   text := to_char(t AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
+  s     text;
 BEGIN
-  INSERT INTO messages VALUES (id, now(), norm(poster), chan, message);
-  PERFORM pg_notify(chan, id::text||' '||norm(address));
+  INSERT INTO messages VALUES (id, t, pnorm, anorm, message);
+  s := id::text||' '|rfc||' '||pnorm||' '||chan||' '||message;
+  PERFORM pg_notify(chan, s);
   RETURN id;
 END;
 $$ LANGUAGE plpgsql STRICT SET search_path FROM CURRENT;
@@ -189,19 +194,10 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION norm(address text) IS
  'Normalize an address so it is lowercase and has the final dot.';
 
-CREATE FUNCTION nonlocal(address text)
-RETURNS text AS $$
-BEGIN
-  RETURN substring(address from position('@' in address)+1);
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
-COMMENT ON FUNCTION nonlocal(address text) IS
- 'Remove the local part of an address.';
-
 CREATE FUNCTION suffixes(address text)
 RETURNS text[] AS $$
 DECLARE
-  str text := norm(nonlocal(address));
+  str text := norm(address);
   pos int;
   res text[];
   dot text := '.';
@@ -218,8 +214,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 COMMENT ON FUNCTION suffixes(address text) IS
- 'Break an address like admin@example.com into rooted pieces like this:
-  {com., example.com., admin@example.com.}';
+ 'Break an address like example.com into rooted pieces: ., com., example.com.';
 
 CREATE FUNCTION suffixes(addresses text[])
 RETURNS text[] AS $$
