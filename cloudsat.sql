@@ -40,7 +40,7 @@ CREATE TABLE registered
   backend_start timestamp with time zone NOT NULL,
   timestamp     timestamp with time zone NOT NULL,
   chans         text[] NOT NULL );
-CREATE INDEX ON registered (name);
+CREATE INDEX ON registered (nick);
 CREATE INDEX ON registered (procpid);
 CREATE INDEX ON registered (backend_start);
 CREATE INDEX ON registered (timestamp);
