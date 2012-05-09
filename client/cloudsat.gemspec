@@ -23,6 +23,6 @@ DESC
   s.files                    =  Dir['lib/**/*.rb', 'README']
   s.require_path             =  'lib'
   s.bindir                   =  'bin'
-  s.executables              =  %w| cloudbot |
+  s.executables              =  %w| hibot |
 end
 
