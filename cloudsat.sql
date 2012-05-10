@@ -56,10 +56,9 @@ DECLARE
   chan  text := norm(address);
   pnorm text := norm(poster);
   t     timestamp with time zone := now();
-  s     text;
+  s     text := format(id, t, pnorm, chan, message);
 BEGIN
   INSERT INTO messages VALUES (id, t, pnorm, chan, message);
-  s := id::text||' '||iso8601utc(t)||' '||pnorm||' '||chan||' // '||message;
   PERFORM pg_notify(chan, s);
   RETURN id;
 END;
@@ -223,9 +222,17 @@ $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 COMMENT ON FUNCTION iso8601utc(t timestamp with time zone) IS
  'Returns a millisecond precision ISO 8601 UTC timestamp.';
 
+CREATE FUNCTION format(uuid, timestamp with time zone, text, text, text)
+RETURNS text AS $$
+BEGIN
+  RETURN $1::text||' '||iso8601utc($2)||' '||$3||' '||$4||' // '||$5;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE STRICT;
+COMMENT ON FUNCTION format(uuid, timestamp with time zone, text, text, text) IS
+ 'Render messages in an easily parseable text format.';
+
 CREATE VIEW inbox AS
-SELECT uuid, iso8601utc(timestamp) AS timestamp, poster, chan, message
-  FROM messages, pg_listening_channels()
+SELECT messages.* FROM messages, pg_listening_channels()
  WHERE chan = pg_listening_channels;
 COMMENT ON VIEW inbox IS
  'Searches for posts which match the subscriptions of the present connection
