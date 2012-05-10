@@ -20,6 +20,7 @@ CREATE INDEX ON messages (timestamp);
 CREATE INDEX ON messages USING hash(poster);
 CREATE INDEX ON messages USING hash(chan);
 CREATE INDEX ON messages USING gist(to_tsvector('simple', message));
+CREATE INDEX ON messages (message);
 
 CREATE TYPE disposition AS ENUM
 ( 'ignored', 'acknowledged', 'info', 'problem', 'done' );
