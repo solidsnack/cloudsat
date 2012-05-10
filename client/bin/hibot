@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-d = File.dirname($0)
+d = File.dirname(__FILE__)
 $LOAD_PATH << "#{d}/../lib" if File.directory? "#{d}/../lib"
 
 require 'yaml'
