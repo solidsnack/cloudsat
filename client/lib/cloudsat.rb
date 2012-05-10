@@ -2,10 +2,60 @@ require 'yaml'
 require 'socket'
 
 require 'pg'
+require 'sqlite3'
 
 module Cloudsat
 
 class Err < StandardError ; end
+
+class MBox
+  SCHEMA =<<SCHEMA
+  CREATE TABLE IF NOT EXISTS messages
+  ( uuid      TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    poster    TEXT NOT NULL,
+    chan      TEXT NOT NULL,
+    message   TEXT NOT NULL );
+  CREATE INDEX IF NOT EXISTS messages_timestamp ON messages (timestamp);
+  CREATE INDEX IF NOT EXISTS messages_poster    ON messages (poster);
+  CREATE INDEX IF NOT EXISTS messages_chan      ON messages (chan);
+  CREATE INDEX IF NOT EXISTS messages_message   ON messages (message);
+SCHEMA
+  class << self
+    def default_path
+      `echo ~/.cloudsat/mbox.sqlite`.strip
+    end
+    def default
+      p = self.default_path
+      Dir.mkdir(File.dirname(p))
+      self.new(p)
+    end
+  end
+  attr_reader :db, :path
+  def initialize(path)
+    @path = path
+    @db   = SQLite3::Database.new(@path)
+    @db.execute SCHEMA
+  end
+  def add(message)
+    fields = %w| uuid timestamp poster chan message |.map{|f| message[f] }
+    @db.execute 'INSERT INTO messages VALUES ( ?, ?, ?, ?, ? );', *fields
+  end
+  def messages(limit=nil)
+    q = case limit
+        when Fixnum
+          "SELECT * FROM messages ORDER BY timestamp DESC LIMIT #{limit};"
+        when nil
+          'SELECT * FROM messages ORDER BY timestamp DESC;'
+        else
+          raise Err, "Invalid LIMIT #{limit.class}; must be Fixnum."
+        end
+    @db.execute(q).map do |row|
+      { 'uuid'=>row[0], 'timestamp'=>row[1], 'poster'=>row[2], 'chan'=>row[3],
+        'message'=>row[4] }
+    end
+  end
+end
 
 class Bot
   attr_reader :addresses, :conninfo, :connection

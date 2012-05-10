@@ -20,6 +20,7 @@ Client library and model bot for cloudsat, a message board for host management.
 DESC
   s.license                  =  'BSD'
   s.add_dependency(             'pg'                                          )
+  s.add_dependency(             'sqlite3'                                     )
   s.files                    =  Dir['lib/**/*.rb', 'README']
   s.require_path             =  'lib'
   s.bindir                   =  'bin'
