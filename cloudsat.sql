@@ -235,8 +235,7 @@ CREATE VIEW inbox AS
 SELECT messages.* FROM messages, pg_listening_channels()
  WHERE chan = pg_listening_channels;
 COMMENT ON VIEW inbox IS
- 'Searches for posts which match the subscriptions of the present connection
-  and formats their timestamps in a style similar to notifications.';
+ 'Searches for posts which match the subscriptions of the present connection.';
 
 CREATE VIEW recent AS
 SELECT nick, procpid, backend_start, timestamp, chans FROM
