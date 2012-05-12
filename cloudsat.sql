@@ -242,14 +242,16 @@ SELECT threads.before, threads.disposition, messages.*
 COMMENT ON VIEW threaded IS
  'Joined thread and message information for constructing message trees.';
 
-CREATE TYPE branched AS ( path uuid[], timestamp timestamp with time zone,
+CREATE TYPE branched AS ( path uuid[], disposition disposition,
+                          timestamp timestamp with time zone,
                           poster text, chan text, message text );
 CREATE FUNCTION thread(uuid)
 RETURNS SETOF branched AS $$
-SELECT string_to_array(branch,'/')::uuid[], timestamp, poster, chan, message
+SELECT string_to_array(branch,'/')::uuid[], disposition,
+       timestamp, poster, chan, message
   FROM connectby('threaded', 'uuid', 'before', $1::text, 0, '/')
         AS t(uuid uuid, parent uuid, depth int, branch text)
-       NATURAL JOIN messages;
+       NATURAL JOIN threaded;
 $$ LANGUAGE sql STRICT;
 COMMENT ON FUNCTION thread(uuid) IS
  'Retrieve the thread rooted at a particular message.';
