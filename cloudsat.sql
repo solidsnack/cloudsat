@@ -1,9 +1,8 @@
 DROP SCHEMA cloudsat CASCADE;
-CREATE EXTENSION "uuid-ossp"; -- Needed for stored procedure. Loaded here so
-                              -- we fail before making any changes to the
-                              -- database if it's not available.
 CREATE SCHEMA cloudsat;
 SET search_path TO cloudsat, public, pg_temp;
+CREATE EXTENSION "uuid-ossp" SCHEMA cloudsat;
+CREATE EXTENSION tablefunc SCHEMA cloudsat;
 
 
  ------------------------------------------------------------------------------
@@ -236,6 +235,24 @@ SELECT messages.* FROM messages, pg_listening_channels()
  WHERE chan = pg_listening_channels;
 COMMENT ON VIEW inbox IS
  'Searches for posts which match the subscriptions of the present connection.';
+
+CREATE VIEW threaded AS
+SELECT threads.before, threads.disposition, messages.*
+  FROM threads RIGHT OUTER JOIN messages ON threads.after = messages.uuid;
+COMMENT ON VIEW threaded IS
+ 'Joined thread and message information for constructing message trees.';
+
+CREATE TYPE branched AS ( branch uuid[], timestamp timestamp with time zone,
+                          poster text, chan text, message text );
+CREATE FUNCTION thread(uuid)
+RETURNS SETOF branched AS $$
+SELECT string_to_array(branch,'/')::uuid[], timestamp, poster, chan, message
+  FROM connectby('threaded', 'uuid', 'before', $1::text, 0, '/')
+        AS t(uuid uuid, parent uuid, depth int, branch text)
+       NATURAL JOIN messages;
+$$ LANGUAGE sql STRICT;
+COMMENT ON FUNCTION thread(uuid) IS
+ 'Retrieve the thread rooted at a particular message.';
 
 CREATE VIEW recent AS
 SELECT nick, procpid, backend_start, timestamp, chans FROM
