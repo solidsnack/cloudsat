@@ -2,18 +2,23 @@
 d = File.dirname(__FILE__)
 $LOAD_PATH << "#{d}/../lib" if File.directory? "#{d}/../lib"
 
+require 'irb'
 require 'yaml'
+
 require 'rubygems'
 require 'cloudsat'
 
 module Cloudsat::CLI
 extend self
 def handle_args(argv)
+  use_irb = false
   addresses = []
   conninfo  = ""
   mode = :addresses
   argv.each do |arg|
     case arg
+    when '--irb'
+      use_irb = true
     when '--conninfo'
       mode = :conninfo
     else
@@ -28,13 +33,9 @@ def handle_args(argv)
       end
     end
   end
-  [ addresses, conninfo ]
+  [ addresses, conninfo, use_irb ]
 end
-def start
-  Cloudsat::Bot.new(*handle_args(ARGV))
-end
-def main
-  bot = start
+def receive(bot)
   bot.join
   STDERR.puts "LISTENing on: #{bot.addresses.join(' ')}"
   STDERR.puts "Sending hello to cloudsat..."
@@ -47,6 +48,17 @@ def main
     bot.receive do |message|
       STDOUT.puts(Cloudsat::Message.yaml(message))
     end
+  end
+end
+def main
+  addresses, conninfo, use_irb = handle_args(ARGV)
+  bot = Cloudsat::Bot.new(addresses, conninfo)
+  if use_irb
+    $bot = bot
+    ARGV.clear
+    IRB.start
+  else
+    receive(bot)
   end
 end
 end
