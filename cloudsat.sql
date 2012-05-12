@@ -242,7 +242,7 @@ SELECT threads.before, threads.disposition, messages.*
 COMMENT ON VIEW threaded IS
  'Joined thread and message information for constructing message trees.';
 
-CREATE TYPE branched AS ( branch uuid[], timestamp timestamp with time zone,
+CREATE TYPE branched AS ( path uuid[], timestamp timestamp with time zone,
                           poster text, chan text, message text );
 CREATE FUNCTION thread(uuid)
 RETURNS SETOF branched AS $$
