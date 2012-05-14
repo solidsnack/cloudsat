@@ -2,6 +2,7 @@ require 'yaml'
 require 'socket'
 
 require 'pg'
+require 'tree'
 
 module Cloudsat
 
@@ -29,17 +30,36 @@ class Bot
   end
   # Retrieve a thread listing and create a hash of hashes.
   def thread(uuid)
-    tree = {}
     s =<<SQL
 SELECT path, disposition, iso8601utc(timestamp) AS timestamp,
        poster, chan, message
-  FROM cloudsat.thread($1)'
+  FROM cloudsat.thread($1);
 SQL
+    root = Tree::TreeNode.new('root')
+    parent = root
     @connection.exec(s, [uuid]) do |res|
       res.each do |tuple|
         path = tuple['path'].gsub('{', '').gsub('}', '').split(',')
+        tuple.delete('path')
+        require 'pp'
+        pp path
+        pp tuple
+        pp root
+        loop do
+          STDERR.puts 'loop!'
+          uuid = path.shift
+          parent << Tree::TreeNode.new(uuid) unless parent[uuid]
+          current = parent[uuid]
+          if path.empty?
+            current.content = tuple.merge('uuid'=>uuid)
+            break
+          else
+            parent = current
+          end
+        end
       end
     end
+    root.children.first
   end
   def command(cmd, *args, &block)
     placeholders = (1..args.length).map{|n| "$#{n}" }.join(', ')
