@@ -35,18 +35,13 @@ SELECT path, disposition, iso8601utc(timestamp) AS timestamp,
        poster, chan, message
   FROM cloudsat.thread($1);
 SQL
-    root = Tree::TreeNode.new('root')
-    parent = root
+    root = Tree::TreeNode.new('.')
     @connection.exec(s, [uuid]) do |res|
       res.each do |tuple|
         path = tuple['path'].gsub('{', '').gsub('}', '').split(',')
         tuple.delete('path')
-        require 'pp'
-        pp path
-        pp tuple
-        pp root
+        parent = root
         loop do
-          STDERR.puts 'loop!'
           uuid = path.shift
           parent << Tree::TreeNode.new(uuid) unless parent[uuid]
           current = parent[uuid]
