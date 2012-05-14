@@ -27,6 +27,20 @@ class Bot
     connect
     register(@addresses)
   end
+  # Retrieve a thread listing and create a hash of hashes.
+  def thread(uuid)
+    tree = {}
+    s =<<SQL
+SELECT path, disposition, iso8601utc(timestamp) AS timestamp,
+       poster, chan, message
+  FROM cloudsat.thread($1)'
+SQL
+    @connection.exec(s, [uuid]) do |res|
+      res.each do |tuple|
+        path = tuple['path'].gsub('{', '').gsub('}', '').split(',')
+      end
+    end
+  end
   def command(cmd, *args, &block)
     placeholders = (1..args.length).map{|n| "$#{n}" }.join(', ')
     escaped = @connection.quote_ident(cmd)
@@ -56,7 +70,11 @@ SELECT
     @connection.exec(s, &block)
   end
   def inbox(&block)
-    @connection.exec('SELECT * FROM cloudsat.inbox LIMIT 64;') do |res|
+    q =<<SQL
+SELECT uuid, iso8601utc(timestamp) AS timestamp, poster, chan, message
+  FROM cloudsat.inbox LIMIT 64;
+SQL
+    @connection.exec(q) do |res|
       res.each(&block)
     end
   end
