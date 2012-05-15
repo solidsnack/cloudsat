@@ -35,8 +35,13 @@ SELECT path, disposition, iso8601utc(timestamp) AS timestamp,
        poster, chan, message
   FROM cloudsat.thread($1);
 SQL
-    root = Tree::TreeNode.new('.')
     @connection.exec(s, [uuid]) do |res|
+      tree(res)
+    end
+  end
+  def tree(tuples)
+    root = Tree::TreeNode.new('.')
+    tuples.each do |res|
       res.each do |tuple|
         path = tuple['path'].gsub('{', '').gsub('}', '').split(',')
         tuple.delete('path')
@@ -135,3 +140,4 @@ end
 end
 
 end
+
