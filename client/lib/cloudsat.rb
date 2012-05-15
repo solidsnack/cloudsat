@@ -41,21 +41,19 @@ SQL
   end
   def tree(tuples)
     root = Tree::TreeNode.new('.')
-    tuples.each do |res|
-      res.each do |tuple|
-        path = tuple['path'].gsub('{', '').gsub('}', '').split(',')
-        tuple.delete('path')
-        parent = root
-        loop do
-          uuid = path.shift
-          parent << Tree::TreeNode.new(uuid) unless parent[uuid]
-          current = parent[uuid]
-          if path.empty?
-            current.content = tuple.merge('uuid'=>uuid)
-            break
-          else
-            parent = current
-          end
+    tuples.each do |tuple|
+      path = tuple['path'].gsub('{', '').gsub('}', '').split(',')
+      tuple.delete('path')
+      parent = root
+      loop do
+        uuid = path.shift
+        parent << Tree::TreeNode.new(uuid) unless parent[uuid]
+        current = parent[uuid]
+        if path.empty?
+          current.content = tuple.merge('uuid'=>uuid)
+          break
+        else
+          parent = current
         end
       end
     end
