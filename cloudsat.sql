@@ -335,7 +335,7 @@ BEGIN
     RETURN '00000000-0000-0000-0000-000000000000';
   ELSE
     id := reply(poster, chan, message, parent, disposition);
-    INSERT INTO locks VALUES (parent, id, now(), setting);
+    INSERT INTO lock_log VALUES (parent, id, now(), setting);
     RETURN id;
   END CASE;
 END;
