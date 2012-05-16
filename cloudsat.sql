@@ -25,9 +25,9 @@ CREATE TYPE disposition AS ENUM
 ( 'ignored', 'acknowledged', 'info', 'problem', 'done' );
 
 CREATE TABLE threads
-( before      uuid NOT NULL REFERENCES messages(uuid),
+( before      uuid NOT NULL REFERENCES messages(uuid) ON DELETE CASCADE,
   disposition disposition NOT NULL,
-  after       uuid NOT NULL REFERENCES messages(uuid) );
+  after       uuid NOT NULL REFERENCES messages(uuid) ON DELETE CASCADE );
  -- Foreign key allows us to cascade deletes of old messages.
 CREATE INDEX ON threads (before);
 CREATE INDEX ON threads USING hash(disposition);
@@ -280,8 +280,8 @@ COMMENT ON VIEW connections IS
  ------------------------------------------------------------------------------
 
 CREATE TABLE lock_log
-( locked    uuid NOT NULL,
-  locking   uuid NOT NULL,
+( locked    uuid NOT NULL REFERENCES messages(uuid) ON DELETE CASCADE,
+  locking   uuid NOT NULL REFERENCES messages(uuid) ON DELETE CASCADE,
   timestamp timestamp with time zone NOT NULL,
   sets_lock bool NOT NULL );
 CREATE INDEX ON lock_log (timestamp);
